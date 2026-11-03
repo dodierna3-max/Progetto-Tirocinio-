@@ -1,10 +1,13 @@
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
+
+load_dotenv()
+
 from controllers.api_routes import router as api_router
 from controllers.scheduler import ReportScheduler
 
-load_dotenv()
+
 
 
 @asynccontextmanager
