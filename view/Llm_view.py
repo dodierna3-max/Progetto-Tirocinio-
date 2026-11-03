@@ -8,6 +8,7 @@ class LLMReportView:
     def __init__(self):
         self.api_key = os.getenv("LLM_API_KEY", "")
         self.api_url = os.getenv("LLM_API_URL", "https://api.openai.com/v1/chat/completions")
+        self.model   = os.getenv("LLM_MODEL", "gpt-4o-mini")
 
     def generate_narrative(self, data: ReportData) -> str:
         queries_summary = ", ".join(
@@ -47,7 +48,7 @@ class LLMReportView:
             self.api_url,
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
             json={
-                "model": "gpt-4o-mini",
+                "model": self.model,
                 "temperature": 0.2,
                 "messages": [
                     {"role": "system", "content": "Sei un consulente SEO senior chiaro e preciso."},
