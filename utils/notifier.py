@@ -31,8 +31,8 @@ class EmailNotifier:
                 server.login(self.user, self.password)
                 server.sendmail(self.user, self.recipient, msg.as_string())
             return True
-        except smtplib.SMTPException as e:
-            print(f"[EmailNotifier] Errore SMTP: {e}")
+        except Exception as e:
+            print(f"[EmailNotifier] Errore invio: {type(e).__name__}: {e}")
             return False
 
 
@@ -55,6 +55,6 @@ class TelegramNotifier:
             )
             response.raise_for_status()
             return True
-        except requests.RequestException as e:
-            print(f"[TelegramNotifier] Errore: {e}")
+        except Exception as e:
+            print(f"[TelegramNotifier] Errore: {type(e).__name__}: {e}")
             return False
