@@ -1,0 +1,1073 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+controllers/
+  api_routes.py
+  report_controller.py
+  scheduler.py
+models/
+  analysis_model.py
+  gsc_model.py
+  schemas.py
+utils/
+  notifier.py
+view/
+  Llm_view.py
+  report_view.py
+.gitignore
+dashboard.html
+esempio_report.csv
+main.py
+requirements.txt
+test_report.html
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="dashboard.html">
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Generatore Report SEO</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #121212; color: #eaeaea; max-width: 800px; margin: 40px auto; padding: 20px; }
+        .card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 24px; margin-bottom: 24px; }
+        h1, h2 { color: #d4af37; margin-top: 0; }
+        input[type="file"] { display: block; margin: 16px 0; color: #ccc; }
+        button { background: #d4af37; color: #121212; border: none; padding: 12px 24px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        button:disabled { opacity: 0.5; cursor: wait; }
+        #status { margin-top: 12px; font-size: 14px; color: #aaa; }
+        #preview { background: #ffffff; color: #222222; padding: 20px; border-radius: 6px; min-height: 120px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Generazione Report SEO</h1>
+        <p>Seleziona un file CSV dal computer (oppure lascia vuoto per usare i dati di default):</p>
+        <input type="file" id="csvInput" accept=".csv">
+        <button id="btnGenera" onclick="generaReport()">Genera Report e Invia Email</button>
+        <p id="status"></p>
+    </div>
+
+    <div class="card">
+        <h2>Anteprima del Report</h2>
+        <div id="preview"><em>Nessun report generato. Clicca sul bottone sopra per vedere l'anteprima.</em></div>
+    </div>
+
+    <script>
+        async function generaReport() {
+            const btn = document.getElementById('btnGenera');
+            const status = document.getElementById('status');
+            const preview = document.getElementById('preview');
+            const fileInput = document.getElementById('csvInput');
+
+            btn.disabled = true;
+            status.textContent = "Generazione del report e invio email in corso...";
+
+            const formData = new FormData();
+            if (fileInput.files.length > 0) {
+                formData.append("file", fileInput.files[0]);
+            }
+
+            try {
+                const res = await fetch('/api/generate-report', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.detail || "Errore durante la generazione");
+
+                preview.innerHTML = data.html_preview;
+                status.textContent = "Completato! Email inviata: " + (data.email_sent ? "Sì" : "No");
+            } catch (err) {
+                status.textContent = "Errore: " + err.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
+</file>
+
+<file path="esempio_report.csv">
+Top queries,Clicks,Impressions,CTR,Position,Page
+consulenza seo milano,142,2350,6.04%,2.3,https://www.esempio-cliente.it/servizi/seo
+agenzia web marketing,97,1820,5.33%,3.8,https://www.esempio-cliente.it/chi-siamo
+posizionamento sito google,83,1540,5.39%,4.1,https://www.esempio-cliente.it/blog/posizionamento
+preventivo seo,61,980,6.22%,5.2,https://www.esempio-cliente.it/contatti
+seo e-commerce,48,870,5.52%,6.7,https://www.esempio-cliente.it/servizi/ecommerce
+ottimizzazione sito web,39,720,5.42%,7.3,https://www.esempio-cliente.it/servizi/ottimizzazione
+audit seo gratuito,34,650,5.23%,8.1,https://www.esempio-cliente.it/audit
+link building italia,28,590,4.75%,9.4,https://www.esempio-cliente.it/blog/link-building
+consulente seo freelance,22,480,4.58%,10.2,https://www.esempio-cliente.it/chi-siamo
+analisi seo sito,18,410,4.39%,11.5,https://www.esempio-cliente.it/audit
+</file>
+
+<file path="controllers/report_controller.py">
+from datetime import date, timedelta
+from models.gsc_model import GSCClient
+from models.analysis_model import SEOAnalyzer
+from view.Llm_view import LLMReportView
+from view.report_view import ReportFormatter
+from utils.notifier import EmailNotifier, TelegramNotifier
+
+
+class ReportController:
+
+    def __init__(self):
+        self.gsc_client = GSCClient()
+        self.llm_view   = LLMReportView()
+        self.email      = EmailNotifier()
+        self.telegram   = TelegramNotifier()
+
+    def execute_pipeline(self, days: int = 7, custom_rows: list[dict] = None) -> dict:
+        today        = date.today() - timedelta(days=3)
+        curr_start   = today - timedelta(days=days)
+        prev_end     = curr_start - timedelta(days=1)
+        prev_start   = prev_end - timedelta(days=days)
+        period_label = f"{curr_start} / {today}"
+
+        # Se l'utente ha caricato un CSV usa quei dati, altrimenti interroga GSCClient
+        curr_raw  = custom_rows if custom_rows is not None else self.gsc_client.fetch_query_metrics(str(curr_start), str(today))
+        prev_raw  = self.gsc_client.fetch_query_metrics(str(prev_start), str(prev_end))
+        page_raw  = self.gsc_client.fetch_page_metrics(str(curr_start), str(today))
+        daily_raw = self.gsc_client.fetch_daily_metrics(str(curr_start), str(today))
+
+        report_data = SEOAnalyzer.analyze_data(curr_raw, prev_raw, page_raw, daily_raw, period_label)
+
+        try:
+            narrative = self.llm_view.generate_narrative(report_data)
+        except Exception as e:
+            narrative = f"Riepilogo AI non disponibile ({e}). Consultare la tabella dati."
+
+        subject       = f"Report SEO ({period_label})"
+        html_content  = ReportFormatter.format_html(report_data, narrative)
+        email_sent    = self.email.send(subject, html_content)
+        telegram_sent = self.telegram.send(subject, narrative)
+
+        result = ReportFormatter.format_json(report_data, narrative)
+        result["html_preview"]  = html_content  # <-- Serve per mostrare l'anteprima nella pagina web
+        result["email_sent"]    = email_sent
+        result["telegram_sent"] = telegram_sent
+        return result
+</file>
+
+<file path="models/gsc_model.py">
+import os
+from googleapiclient.errors import HttpError
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+class GSCClient:
+    SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
+    # Dati mock realistici per sviluppo locale (query)
+    _MOCK_QUERY_ROWS = [
+        {"query": "consulenza seo", "page": "https://esempio.it/servizi/seo",
+         "clicks": 120, "impressions": 1500, "ctr": 0.08, "position": 2.4},
+        {"query": "agenzia web",    "page": "https://esempio.it/chi-siamo",
+         "clicks": 85,  "impressions": 1100, "ctr": 0.077, "position": 4.1},
+        {"query": "posizionamento google", "page": "https://esempio.it/blog/posizionamento",
+         "clicks": 60,  "impressions": 900,  "ctr": 0.067, "position": 5.3},
+        {"query": "seo locale",     "page": "https://esempio.it/servizi/seo-locale",
+         "clicks": 45,  "impressions": 700,  "ctr": 0.064, "position": 6.8},
+        {"query": "audit seo",      "page": "https://esempio.it/audit",
+         "clicks": 30,  "impressions": 500,  "ctr": 0.060, "position": 8.1},
+    ]
+    # Dati mock realistici per sviluppo locale (pagine di destinazione)
+    _MOCK_PAGE_ROWS = [
+        {"query": "", "page": "https://esempio.it/servizi/seo",
+         "clicks": 200, "impressions": 2500, "ctr": 0.080, "position": 2.1},
+        {"query": "", "page": "https://esempio.it/chi-siamo",
+         "clicks": 130, "impressions": 1800, "ctr": 0.072, "position": 3.9},
+        {"query": "", "page": "https://esempio.it/blog/posizionamento",
+         "clicks": 90,  "impressions": 1200, "ctr": 0.075, "position": 4.5},
+    ]
+    # Dati mock per serie storica giornaliera (7 giorni)
+    _MOCK_DATE_ROWS = [
+        {"date": "2026-10-07", "clicks": 95,  "impressions": 1200, "ctr": 0.079, "position": 3.2},
+        {"date": "2026-10-08", "clicks": 110, "impressions": 1350, "ctr": 0.081, "position": 3.1},
+        {"date": "2026-10-09", "clicks": 88,  "impressions": 1100, "ctr": 0.080, "position": 3.3},
+        {"date": "2026-10-10", "clicks": 102, "impressions": 1280, "ctr": 0.080, "position": 3.0},
+        {"date": "2026-10-11", "clicks": 75,  "impressions": 980,  "ctr": 0.077, "position": 3.5},
+        {"date": "2026-10-12", "clicks": 60,  "impressions": 820,  "ctr": 0.073, "position": 3.7},
+        {"date": "2026-10-13", "clicks": 130, "impressions": 1600, "ctr": 0.081, "position": 2.9},
+    ]
+    def __init__(self):
+        self.site_url  = os.getenv("GSC_SITE_URL", "https://www.esempio.it/")
+        self.creds_path = os.getenv("GSC_CREDENTIALS_PATH", "")
+    # ------------------------------------------------------------------ #
+    #  Metodo privato: costruisce il client autenticato Google            #
+    # ------------------------------------------------------------------ #
+    def _build_service(self):
+        creds = service_account.Credentials.from_service_account_file(
+            self.creds_path, scopes=self.SCOPES
+        )
+        return build('searchconsole', 'v1', credentials=creds)
+    # ------------------------------------------------------------------ #
+    #  Metodo privato: esegue una singola query sull'API GSC              #
+    # ------------------------------------------------------------------ #
+    def _execute_query(self, service, payload: dict) -> list:
+        try:
+            response = (
+                service.searchanalytics()
+                       .query(siteUrl=self.site_url, body=payload)
+                       .execute()
+            )
+            return response.get('rows', [])
+        except HttpError as e:
+            # Gestione errori HTTP Google (401, 403, 429, 500…)
+            print(f"[GSCClient] HttpError {e.resp.status}: {e.error_details}")
+            return []
+        except Exception as e:
+            print(f"[GSCClient] Errore imprevisto: {e}")
+            return []
+    # ------------------------------------------------------------------ #
+    #  Recupero top query con pagina di destinazione associata           #
+    # ------------------------------------------------------------------ #
+    def fetch_query_metrics(
+        self,
+        start_date: str,
+        end_date: str,
+        row_limit: int = 10
+    ) -> list[dict]:
+        """Restituisce le top query con la relativa pagina di destinazione."""
+        if not os.path.exists(self.creds_path):
+            return self._MOCK_QUERY_ROWS[:row_limit]
+        service = self._build_service()
+        payload = {
+            'startDate': start_date,
+            'endDate': end_date,
+            'dimensions': ['query', 'page'],     # ← NUOVO: dimensione 'page'
+            'rowLimit': row_limit
+        }
+        rows = self._execute_query(service, payload)
+        return [
+            {
+                "query": r['keys'][0],
+                "page":  r['keys'][1],           # ← NUOVO: landing page
+                "clicks":      int(r['clicks']),
+                "impressions": int(r['impressions']),
+                "ctr":         float(r['ctr']),
+                "position":    float(r['position'])
+            }
+            for r in rows
+        ]
+    # ------------------------------------------------------------------ #
+    #  Recupero top pagine di destinazione (dimensione: page)            #
+    # ------------------------------------------------------------------ #
+    def fetch_page_metrics(
+        self,
+        start_date: str,
+        end_date: str,
+        row_limit: int = 10
+    ) -> list[dict]:
+        """Restituisce le pagine di destinazione con metriche aggregate."""
+        if not os.path.exists(self.creds_path):
+            return self._MOCK_PAGE_ROWS[:row_limit]
+        service = self._build_service()
+        payload = {
+            'startDate': start_date,
+            'endDate': end_date,
+            'dimensions': ['page'],              # ← solo dimensione pagina
+            'rowLimit': row_limit
+        }
+        rows = self._execute_query(service, payload)
+        return [
+            {
+                "query": "",
+                "page":  r['keys'][0],
+                "clicks":      int(r['clicks']),
+                "impressions": int(r['impressions']),
+                "ctr":         float(r['ctr']),
+                "position":    float(r['position'])
+            }
+            for r in rows
+        ]
+    # ------------------------------------------------------------------ #
+    #  Recupero serie storica giornaliera                                 #
+    # ------------------------------------------------------------------ #
+    def fetch_daily_metrics(
+        self,
+        start_date: str,
+        end_date: str
+    ) -> list[dict]:
+        """Restituisce le metriche aggregate per singolo giorno (serie storica)."""
+        if not os.path.exists(self.creds_path):
+            return self._MOCK_DATE_ROWS
+        service = self._build_service()
+        payload = {
+            'startDate': start_date,
+            'endDate': end_date,
+            'dimensions': ['date'],              # ← NUOVO: dimensione 'date'
+        }
+        rows = self._execute_query(service, payload)
+        return [
+            {
+                "date":        r['keys'][0],
+                "clicks":      int(r['clicks']),
+                "impressions": int(r['impressions']),
+                "ctr":         float(r['ctr']),
+                "position":    float(r['position'])
+            }
+            for r in rows
+        ]
+</file>
+
+<file path="view/report_view.py">
+from models.schemas import ReportData
+
+
+class ReportFormatter:
+
+    @staticmethod
+    def format_html(data: ReportData, narrative: str) -> str:
+        query_rows = "".join(
+            f"<tr><td>{q.query}</td><td>{q.clicks}</td><td>{q.impressions}</td><td>{q.position}</td></tr>"
+            for q in data.top_queries
+        ) or "<tr><td colspan='4'>Nessuna query disponibile</td></tr>"
+
+        page_rows = "".join(
+            f"<tr><td>{p.page}</td><td>{p.clicks}</td><td>{p.impressions}</td><td>{p.position}</td></tr>"
+            for p in data.top_pages
+        ) or "<tr><td colspan='4'>Nessuna pagina disponibile</td></tr>"
+
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+            <h2>Report SEO — Periodo: {data.period}</h2>
+            <p>
+                <strong>Click Totali:</strong> {data.total_clicks} ({data.clicks_delta_pct}%) |
+                <strong>Impressioni:</strong> {data.total_impressions} |
+                <strong>CTR Medio:</strong> {data.avg_ctr * 100:.2f}% |
+                <strong>Posizione Media:</strong> {data.avg_position}
+            </p>
+
+            <h3>Analisi Strategica</h3>
+            <p style="background: #f4f6f8; padding: 12px; border-left: 4px solid #2563eb;">
+                {narrative}
+            </p>
+
+            <h3>Top 5 Query</h3>
+            <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+                <tr style="background: #e2e8f0;">
+                    <th>Query</th><th>Click</th><th>Impressioni</th><th>Posizione</th>
+                </tr>
+                {query_rows}
+            </table>
+
+            <h3>Top 5 Pagine</h3>
+            <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+                <tr style="background: #e2e8f0;">
+                    <th>Pagina</th><th>Click</th><th>Impressioni</th><th>Posizione</th>
+                </tr>
+                {page_rows}
+            </table>
+        </body>
+        </html>
+        """
+
+    @staticmethod
+    def format_json(data: ReportData, narrative: str) -> dict:
+        return {
+            "metrics": data.model_dump(),
+            "narrative": narrative
+        }
+</file>
+
+<file path=".gitignore">
+venv/
+env/
+.venv/
+
+.env
+.env.local
+
+pycache/
+*.pyc
+*.pyo
+*.pyd
+
+.DS_Store
+Thumbs.db
+
+*.log
+</file>
+
+<file path="requirements.txt">
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+certifi==2026.7.22
+cffi==2.1.1
+charset-normalizer==3.5.2
+click==8.5.0
+cryptography==50.0.2
+fastapi==0.143.0
+google-api-core==2.42.0
+google-api-python-client==2.201.0
+google-auth==2.61.0
+google-auth-httplib2==0.4.4
+googleapis-common-protos==1.75.5
+h11==0.16.0
+httplib2==0.32.0
+idna==3.20
+numpy==2.5.4
+opentelemetry-api==1.45.1
+pandas==3.0.6
+proto-plus==1.29.0
+protobuf==7.36.2
+pyasn1==0.6.4
+pyasn1_modules==0.4.2
+pycparser==3.11
+pydantic==2.14.1
+pydantic_core==2.50.1
+pyparsing==3.3.3
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.4
+requests==2.34.2
+schedule==1.2.2
+six==1.17.0
+starlette==1.7.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+tzdata==2026.5
+uritemplate==4.2.0
+urllib3==2.8.0
+uvicorn==0.54.0
+</file>
+
+<file path="test_report.html">
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report SEO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+        }
+        header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 28px 0;
+            text-align: center;
+        }
+        header h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.5px; }
+        header p  { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+        main {
+            max-width: 720px;
+            margin: 32px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .card h2 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 16px;
+        }
+        /* Upload */
+        .upload-area {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .btn-file {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #1a1a2e;
+            color: white;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-file:hover { background: #0f3460; }
+        .btn-file input { display: none; }
+        .file-name {
+            font-size: 13px;
+            color: #6b7280;
+        }
+        .file-name.loaded { color: #059669; font-weight: 500; }
+        /* Generate button */
+        .btn-generate {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #059669, #047857);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .btn-generate:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+        .btn-generate:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            transform: none;
+        }
+        /* Status */
+        .status {
+            text-align: center;
+            padding: 12px;
+            font-size: 13px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .status.loading { display: block; background: #eff6ff; color: #1e40af; }
+        .status.success { display: block; background: #ecfdf5; color: #065f46; }
+        .status.error   { display: block; background: #fef2f2; color: #991b1b; }
+        /* Preview */
+        .preview-frame {
+            width: 100%;
+            min-height: 500px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>📊 Report SEO Automatico</h1>
+    <p>Carica i dati CSV di Google Search Console e genera il report</p>
+</header>
+<main>
+    <!-- Upload -->
+    <div class="card">
+        <h2>1. Seleziona il file CSV</h2>
+        <div class="upload-area">
+            <label class="btn-file">
+                📁 Scegli file CSV
+                <input type="file" id="csvInput" accept=".csv">
+            </label>
+            <span class="file-name" id="fileName">Nessun file selezionato</span>
+        </div>
+    </div>
+    <!-- Generate -->
+    <div class="card">
+        <h2>2. Genera e invia il report</h2>
+        <button class="btn-generate" id="btnGenerate" disabled>
+            🚀 Genera Report e Invia Email
+        </button>
+    </div>
+    <!-- Status -->
+    <div class="status" id="status"></div>
+    <!-- Preview -->
+    <div class="card" id="previewCard" style="display:none;">
+        <h2>📄 Anteprima del Report</h2>
+        <iframe class="preview-frame" id="preview"></iframe>
+    </div>
+</main>
+<script>
+    const csvInput   = document.getElementById('csvInput');
+    const fileName   = document.getElementById('fileName');
+    const btnGen     = document.getElementById('btnGenerate');
+    const status     = document.getElementById('status');
+    const preview    = document.getElementById('preview');
+    const prevCard   = document.getElementById('previewCard');
+    csvInput.addEventListener('change', () => {
+        if (csvInput.files.length > 0) {
+            fileName.textContent = csvInput.files[0].name;
+            fileName.className = 'file-name loaded';
+            btnGen.disabled = false;
+        }
+    });
+    btnGen.addEventListener('click', async () => {
+        if (!csvInput.files.length) return;
+        btnGen.disabled = true;
+        status.className = 'status loading';
+        status.textContent = '⏳ Generazione in corso...';
+        prevCard.style.display = 'none';
+        const formData = new FormData();
+        formData.append('file', csvInput.files[0]);
+        try {
+            const res = await fetch('/api/upload-report', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok) {
+                status.className = 'status error';
+                status.textContent = '❌ Errore: ' + (data.detail || 'Errore sconosciuto');
+                btnGen.disabled = false;
+                return;
+            }
+            // Status
+            const emailOk = data.email_dispatched ? '✅ Email inviata' : '⚠️ Email non inviata (controlla SMTP)';
+            status.className = 'status success';
+            status.textContent = '✅ Report generato! ' + emailOk;
+            // Preview
+            if (data.report_html) {
+                prevCard.style.display = 'block';
+                preview.srcdoc = data.report_html;
+            }
+        } catch (e) {
+            status.className = 'status error';
+            status.textContent = '❌ Errore di rete: ' + e.message;
+        }
+        btnGen.disabled = false;
+    });
+</script>
+</body>
+</html>
+</file>
+
+<file path="controllers/api_routes.py">
+import io
+import pandas as pd
+from fastapi import APIRouter, HTTPException, UploadFile, File
+from models.analysis_model import SEOAnalyzer
+from view.Llm_view import LLMReportView
+from view.report_view import ReportFormatter
+from utils.notifier import EmailNotifier, TelegramNotifier
+
+router = APIRouter()
+
+COLUMN_MAP = {
+    "top queries": "query", "query principali": "query", "query": "query",
+    "clicks": "clicks", "clic": "clicks",
+    "impressions": "impressions", "impressioni": "impressions",
+    "ctr": "ctr",
+    "position": "position", "average position": "position",
+    "posizione": "position", "posizione media": "position",
+    "page": "page", "top pages": "page", "landing page": "page",
+    "pagina": "page", "pagina di destinazione": "page",
+    "date": "date", "data": "date",
+}
+
+
+def parse_csv(content: bytes) -> list[dict]:
+    df = pd.read_csv(io.BytesIO(content))
+    df.columns = [COLUMN_MAP.get(c.strip().lower(), c.strip().lower()) for c in df.columns]
+
+    if "ctr" in df.columns:
+        df["ctr"] = df["ctr"].astype(str).str.replace("%", "").astype(float)
+        if df["ctr"].max() > 1:
+            df["ctr"] = df["ctr"] / 100.0
+
+    return df.to_dict(orient="records")
+
+
+@router.get("/health")
+def health_check():
+    return {"status": "online", "service": "SEO Reporting MVC"}
+
+
+@router.post("/upload-report")
+def upload_report(file: UploadFile = File(...)):
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Formato non valido. Carica un file .csv")
+
+    try:
+        content = file.file.read()
+        rows = parse_csv(content)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Errore lettura CSV: {e}")
+
+    if not rows:
+        raise HTTPException(status_code=400, detail="Il file CSV è vuoto")
+
+    page_rows = [r for r in rows if r.get("page")]
+    period = f"Report da file: {file.filename}"
+
+    report_data = SEOAnalyzer.analyze_data(
+        current_raw=rows,
+        previous_raw=[],
+        page_raw=page_rows,
+        daily_raw=[r for r in rows if r.get("date")],
+        period_label=period
+    )
+
+    llm = LLMReportView()
+    try:
+        narrative = llm.generate_narrative(report_data)
+    except Exception as e:
+        print(f"[LLM ERROR] {type(e).__name__}: {e}")
+        narrative = f"Riepilogo AI non disponibile ({e})."
+
+    html_content = ReportFormatter.to_html(report_data, narrative)
+    subject = f"Report SEO — {file.filename}"
+
+    email_sent = EmailNotifier().send(subject, html_content)
+    telegram_sent = TelegramNotifier().send(subject, narrative)
+
+    result = ReportFormatter.to_json_response(report_data, narrative, email_sent)
+    result["telegram_sent"] = telegram_sent
+    result["report_html"] = html_content
+    return result
+</file>
+
+<file path="controllers/scheduler.py">
+import time
+import threading
+import schedule
+from controllers.report_controller import ReportController
+
+
+class ReportScheduler:
+
+    def __init__(self):
+        self.controller = ReportController()
+
+    def _run_loop(self):
+        schedule.every().monday.at("08:30").do(self.controller.execute_pipeline, days=7)
+        schedule.every().day.at("09:00").do(self.controller.execute_pipeline, days=1)
+
+        while True:
+            schedule.run_pending()
+            time.sleep(60)
+
+    def start(self):
+        thread = threading.Thread(target=self._run_loop, daemon=True)
+        thread.start()
+</file>
+
+<file path="models/analysis_model.py">
+import pandas as pd
+from models.schemas import SEOMetrics, DailyMetrics, ReportData
+
+
+class SEOAnalyzer:
+
+    @staticmethod
+    def analyze_data(
+        current_raw: list[dict],
+        previous_raw: list[dict],
+        page_raw: list[dict],
+        daily_raw: list[dict],
+        period_label: str
+    ) -> ReportData:
+
+        df_curr  = pd.DataFrame(current_raw)  if current_raw  else pd.DataFrame()
+        df_prev  = pd.DataFrame(previous_raw) if previous_raw else pd.DataFrame()
+        df_pages = pd.DataFrame(page_raw)     if page_raw     else pd.DataFrame()
+        df_daily = pd.DataFrame(daily_raw)    if daily_raw    else pd.DataFrame()
+
+        if df_curr.empty:
+            return ReportData(
+                period=period_label, total_clicks=0, total_impressions=0,
+                clicks_delta_pct=0.0, avg_ctr=0.0, avg_position=1.0,
+                top_queries=[], top_pages=[], daily_trend=[]
+            )
+
+        curr_clicks      = int(df_curr['clicks'].sum())
+        curr_impressions = int(df_curr['impressions'].sum())
+        prev_clicks      = int(df_prev['clicks'].sum()) if not df_prev.empty else 0
+
+        if prev_clicks > 0:
+            delta_pct = round(((curr_clicks - prev_clicks) / prev_clicks) * 100.0, 2)
+        else:
+            delta_pct = 100.0 if curr_clicks > 0 else 0.0
+
+        avg_ctr = round(float(df_curr['ctr'].mean()), 4)
+        avg_pos = round(float(df_curr['position'].mean()), 2)
+
+        top_queries = [
+            SEOMetrics(**row.to_dict())
+            for _, row in df_curr.sort_values(by='clicks', ascending=False).head(5).iterrows()
+        ]
+
+        top_pages = [
+            SEOMetrics(**row.to_dict())
+            for _, row in df_pages.sort_values(by='clicks', ascending=False).head(5).iterrows()
+        ] if not df_pages.empty else []
+
+        daily_trend = [
+            DailyMetrics(
+                date=str(row['date']),
+                clicks=int(row['clicks']),
+                impressions=int(row['impressions']),
+                ctr=float(row['ctr']),
+                avg_position=float(row['position'])
+            )
+            for _, row in df_daily.sort_values(by='date').iterrows()
+        ] if not df_daily.empty else []
+
+        return ReportData(
+            period=period_label,
+            total_clicks=curr_clicks,
+            total_impressions=curr_impressions,
+            clicks_delta_pct=delta_pct,
+            avg_ctr=avg_ctr,
+            avg_position=avg_pos,
+            top_queries=top_queries,
+            top_pages=top_pages,
+            daily_trend=daily_trend
+        )
+</file>
+
+<file path="models/schemas.py">
+from pydantic import BaseModel, Field
+from typing import List, Optional
+class SEOMetrics(BaseModel):
+    """Rappresenta e valida una singola riga di metriche estratta da GSC (query + pagina)."""
+    query: str
+    page: Optional[str] = None          # ← NUOVO: pagina di destinazione
+    clicks: int = Field(ge=0)
+    impressions: int = Field(ge=0)
+    ctr: float = Field(ge=0.0, le=1.0)
+    position: float = Field(ge=1.0)
+class DailyMetrics(BaseModel):
+    """Rappresenta le metriche aggregate per un singolo giorno (serie storica)."""
+    date: str                            # ← NUOVO: formato YYYY-MM-DD
+    clicks: int = Field(ge=0)
+    impressions: int = Field(ge=0)
+    ctr: float = Field(ge=0.0, le=1.0)
+    avg_position: float = Field(ge=1.0)
+class ReportData(BaseModel):
+    """Contenitore aggregato certificato per la generazione del report."""
+    period: str
+    total_clicks: int
+    total_impressions: int
+    clicks_delta_pct: float
+    avg_ctr: float
+    avg_position: float
+    top_queries: List[SEOMetrics]
+    top_pages: List[SEOMetrics]          # ← NUOVO: top landing pages
+    daily_trend: List[DailyMetrics]      # ← NUOVO: serie storica giornaliera
+</file>
+
+<file path="utils/notifier.py">
+import os
+import smtplib
+import requests
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+
+class EmailNotifier:
+
+    def __init__(self):
+        self.host      = os.getenv("SMTP_HOST", "")
+        self.port      = int(os.getenv("SMTP_PORT", "587"))
+        self.user      = os.getenv("SMTP_USER", "")
+        self.password  = os.getenv("SMTP_PASSWORD", "")
+        self.recipient = os.getenv("CLIENT_EMAIL", "")
+
+    def send(self, subject: str, html_body: str) -> bool:
+        if not self.host or not self.user or not self.password or not self.recipient:
+            print("[EmailNotifier] Credenziali SMTP non configurate — invio saltato.")
+            return False
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"]    = self.user
+        msg["To"]      = self.recipient
+        msg.attach(MIMEText(html_body, "html"))
+
+        try:
+            with smtplib.SMTP(self.host, self.port, timeout=15) as server:
+                server.starttls()
+                server.login(self.user, self.password)
+                server.sendmail(self.user, self.recipient, msg.as_string())
+            return True
+        except Exception as e:
+            print(f"[EmailNotifier] Errore invio: {type(e).__name__}: {e}")
+            return False
+
+
+class TelegramNotifier:
+
+    def __init__(self):
+        self.token   = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        self.chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+
+    def send(self, subject: str, body: str) -> bool:
+        if not self.token or not self.chat_id:
+            print("[TelegramNotifier] Token o Chat ID non configurati — invio saltato.")
+            return False
+
+        try:
+            response = requests.post(
+                f"https://api.telegram.org/bot{self.token}/sendMessage",
+                json={"chat_id": self.chat_id, "text": f"📊 *{subject}*\n\n{body}", "parse_mode": "Markdown"},
+                timeout=10
+            )
+            response.raise_for_status()
+            return True
+        except Exception as e:
+            print(f"[TelegramNotifier] Errore: {type(e).__name__}: {e}")
+            return False
+</file>
+
+<file path="view/Llm_view.py">
+import os
+import requests
+from dotenv import load_dotenv
+from models.schemas import ReportData
+
+
+class LLMReportView:
+
+    def __init__(self):
+        load_dotenv(override=True)
+        self.api_key = os.getenv("LLM_API_KEY", "").strip()
+        self.api_url = os.getenv("LLM_API_URL", "https://api.openai.com/v1/chat/completions").strip()
+        self.model   = os.getenv("LLM_MODEL", "gemini-2.5-flash-lite").strip()
+
+    def generate_narrative(self, data: ReportData) -> str:
+        queries_list = "\n".join(
+            f"  - \"{q.query}\": {q.clicks} click, {q.impressions} visualizzazioni, posizione media {q.position}"
+            for q in data.top_queries
+        ) or "  Nessun dato disponibile."
+
+        pages_list = "\n".join(
+            f"  - {p.page}: {p.clicks} click, {p.impressions} visualizzazioni"
+            for p in data.top_pages if p.page
+        ) or "  Nessun dato disponibile."
+
+        trend = "in crescita" if data.clicks_delta_pct >= 0 else "in calo"
+        sign  = "+" if data.clicks_delta_pct >= 0 else ""
+
+        prompt = f"""Dati del sito web nel periodo "{data.period}":
+
+- Visitatori totali da Google: {data.total_clicks}
+- Volte che il sito è comparso nei risultati: {data.total_impressions}
+- Variazione rispetto al periodo precedente: {sign}{data.clicks_delta_pct}% ({trend})
+- Percentuale di chi ha cliccato dopo aver visto il sito: {data.avg_ctr * 100:.2f}%
+- Posizione media nei risultati di Google: {data.avg_position}
+
+Parole cercate dagli utenti per trovare il sito:
+{queries_list}
+
+Pagine più visitate:
+{pages_list}
+
+Scrivi un report formale in italiano per il titolare dell'azienda, che NON ha competenze tecniche.
+Rispondi a queste domande in modo chiaro e diretto:
+1. Il sito sta andando bene o male rispetto a prima?
+2. Le persone trovano il sito su Google? Come?
+3. Quali sono i punti di forza e le criticità?
+4. Cosa suggerirebbe un consulente per migliorare la situazione?
+
+Regole:
+- Usa un tono professionale ma comprensibile, come una lettera di un consulente di fiducia.
+- NON usare mai termini tecnici senza spiegarli (es. non dire "CTR" ma "percentuale di click").
+- Scrivi paragrafi discorsivi, NON elenchi puntati.
+- Massimo 250 parole."""
+
+        if not self.api_key:
+            return (
+                f"Gentile Cliente,\n\n"
+                f"nel periodo analizzato ({data.period}), il Suo sito ha ricevuto "
+                f"{data.total_clicks} visite da Google su {data.total_impressions} "
+                f"visualizzazioni nei risultati di ricerca, con un andamento {trend} "
+                f"({sign}{data.clicks_delta_pct}% rispetto al periodo precedente).\n\n"
+                f"Le parole più cercate dagli utenti per raggiungere il Suo sito sono state: "
+                + ", ".join(f'"{q.query}"' for q in data.top_queries[:3])
+                + f".\n\n(Nota: report generato senza intelligenza artificiale — configurare LLM_API_KEY per il report completo.)"
+            )
+
+        response = requests.post(
+            self.api_url,
+            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+            json={
+                "model": self.model,
+                "temperature": 0.3,
+                "messages": [
+                    {"role": "system", "content": (
+                        "Sei un consulente di comunicazione digitale esperto. "
+                        "Scrivi report chiari e professionali per clienti non tecnici. "
+                        "Il tuo tono è quello di un professionista di fiducia che spiega "
+                        "con semplicità l'andamento online dell'azienda del cliente."
+                    )},
+                    {"role": "user", "content": prompt}
+                ]
+            },
+            timeout=60
+        )
+
+        print(f"[DEBUG LLM] Status={response.status_code}")
+        if not response.ok:
+            print(f"[DEBUG LLM] Errore: {response.text}")
+
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+</file>
+
+<file path="main.py">
+from dotenv import load_dotenv
+load_dotenv(override=True)
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from controllers.api_routes import router as api_router
+from controllers.scheduler import ReportScheduler
+
+
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    ReportScheduler().start()
+    yield
+
+
+app = FastAPI(title="SEO Reporting MVC", version="1.0.0", lifespan=lifespan)
+app.include_router(api_router, prefix="/api")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/")
+def serve_home():
+    return FileResponse("static/index.html")
+</file>
+
+</files>

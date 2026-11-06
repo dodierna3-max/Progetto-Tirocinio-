@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report SEO</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+            text-align: center;
+            color: #1e293b;
+            background: #f1f5f9;
+        }
+
+        header {
+            padding: 56px 16px 80px;
+            color: #fff;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+        }
+        header h1 { margin: 0; font-size: 36px; font-weight: 600; letter-spacing: 1px; }
+        header p { margin: 12px 0 0; font-size: 17px; color: #94a3b8; }
+
+        main { max-width: 720px; margin: -40px auto 48px; padding: 0 16px; }
+
+        .card {
+            margin-bottom: 20px;
+            padding: 32px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+        }
+        .card h2 { margin: 0 0 20px; font-size: 18px; font-weight: 600; color: #0f172a; }
+        .step {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            margin-right: 8px;
+            line-height: 28px;
+            font-size: 14px;
+            color: #fff;
+            background: #1e3a5f;
+            border-radius: 50%;
+        }
+
+        /* Scelta dei file */
+        #csvInput { display: none; }
+        .pick {
+            display: block;
+            padding: 30px 16px;
+            font-size: 16px;
+            color: #475569;
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .pick:hover {
+            color: #1e3a5f;
+            border-color: #2563eb;
+            background: #eff6ff;
+            box-shadow: 0 0 16px rgba(37, 99, 235, 0.2);
+        }
+        #fileNames { margin: 14px 0 0; font-size: 14px; color: #1e3a5f; word-break: break-word; }
+
+        /* Pulsante principale */
+        #btnGenera {
+            width: 100%;
+            padding: 24px;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #fff;
+            background: linear-gradient(90deg, #1e3a5f, #2563eb);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        #btnGenera:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 0 24px rgba(37, 99, 235, 0.55), 0 8px 28px rgba(30, 58, 95, 0.3);
+        }
+        #btnGenera:active:not(:disabled) { transform: translateY(0); }
+        #btnGenera:disabled { background: #94a3b8; cursor: wait; }
+
+        #status { margin: 18px 0 0; min-height: 22px; font-size: 15px; color: #475569; }
+        #status.ok  { color: #047857; }
+        #status.err { color: #b91c1c; }
+
+        #preview { display: none; width: 100%; height: 720px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Report SEO</h1>
+        <p>Carica i dati di Google Search Console e ottieni un report professionale</p>
+    </header>
+
+    <main>
+        <div class="card">
+            <h2><span class="step">1</span>Seleziona i file CSV</h2>
+            <label class="pick" for="csvInput">Clicca qui per scegliere i file (anche più di uno)</label>
+            <input type="file" id="csvInput" accept=".csv" multiple>
+            <p id="fileNames"></p>
+        </div>
+
+        <div class="card">
+            <h2><span class="step">2</span>Genera il report</h2>
+            <button id="btnGenera">Crea il report e invialo via email</button>
+            <p id="status"></p>
+        </div>
+
+        <div class="card" id="result" style="display:none;">
+            <h2>Il tuo report</h2>
+            <iframe id="preview"></iframe>
+        </div>
+    </main>
+
+    <script>
+        const input     = document.getElementById('csvInput');
+        const fileNames = document.getElementById('fileNames');
+        const button    = document.getElementById('btnGenera');
+        const status    = document.getElementById('status');
+        const result    = document.getElementById('result');
+        const preview   = document.getElementById('preview');
+
+        function showStatus(text, type = "") {
+            status.textContent = text;
+            status.className = type;
+        }
+
+        input.onchange = () => {
+            const names = Array.from(input.files).map(file => file.name);
+            fileNames.textContent = names.length ? "File selezionati: " + names.join(" · ") : "";
+        };
+
+        button.onclick = async () => {
+            if (input.files.length === 0) {
+                showStatus("Seleziona prima almeno un file CSV.", "err");
+                return;
+            }
+
+            button.disabled = true;
+            showStatus("Sto preparando il report...");
+
+            const formData = new FormData();
+            for (const file of input.files) {
+                formData.append("files", file);
+            }
+
+            try {
+                const res  = await fetch("/api/upload-report", { method: "POST", body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Qualcosa è andato storto, riprova.");
+
+                preview.srcdoc = data.report_html;
+                preview.style.display = "block";
+                result.style.display = "block";
+                showStatus(
+                    data.email_sent
+                        ? "Report pronto e inviato via email."
+                        : "Report pronto. L'invio via email non è attivo.",
+                    "ok"
+                );
+                result.scrollIntoView({ behavior: "smooth" });
+            } catch (err) {
+                const isNetworkError = err instanceof TypeError;
+                showStatus(isNetworkError ? "Server non raggiungibile, riprova." : err.message, "err");
+            } finally {
+                button.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>

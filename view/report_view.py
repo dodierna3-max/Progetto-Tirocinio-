@@ -15,6 +15,8 @@ class ReportFormatter:
             for p in data.top_pages
         ) or "<tr><td colspan='4'>Nessuna pagina disponibile</td></tr>"
 
+        narrative_html = narrative.replace("\n", "<br>")
+
         return f"""
         <html>
         <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -28,7 +30,7 @@ class ReportFormatter:
 
             <h3>Analisi Strategica</h3>
             <p style="background: #f4f6f8; padding: 12px; border-left: 4px solid #2563eb;">
-                {narrative}
+                {narrative_html}
             </p>
 
             <h3>Top 5 Query</h3>
