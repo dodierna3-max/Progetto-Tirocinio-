@@ -14,3 +14,7 @@ pycache/
 Thumbs.db
 
 *.log
+
+static/report/
+
+programmazione.json

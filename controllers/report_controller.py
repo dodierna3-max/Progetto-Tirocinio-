@@ -1,44 +1,69 @@
-from datetime import date, timedelta
-from models.gsc_model import GSCClient
-from models.analysis_model import SEOAnalyzer
+from datetime import datetime
+from pathlib import Path
+
+from models.weekly_model import analizza_settimana, scarica_csv
 from view.Llm_view import LLMReportView
-from view.report_view import ReportFormatter
+from view.report_view import crea_report
 from utils.notifier import EmailNotifier, TelegramNotifier
+
+CARTELLA_REPORT = Path("static/report")
+
+# Se l'LLM non risponde il report esce comunque, con indicatori e grafici
+TESTO_NON_DISPONIBILE = (
+    "<h1>Report settimanale</h1>"
+    "<p>Il testo di analisi non è al momento disponibile: trovi qui sotto i dati principali.</p>"
+    "<h2>Andamento giornaliero</h2>[[GRAFICO_DISCOVER]][[GRAFICO_WEB]]"
+)
 
 
 class ReportController:
 
     def __init__(self):
-        self.gsc_client = GSCClient()
-        self.llm_view   = LLMReportView()
-        self.email      = EmailNotifier()
-        self.telegram   = TelegramNotifier()
+        self.llm_view = LLMReportView()
+        self.email    = EmailNotifier()
+        self.telegram = TelegramNotifier()
 
-    def execute_pipeline(self, days: int = 7) -> dict:
-        today      = date.today() - timedelta(days=3)
-        curr_start = today - timedelta(days=days)
-        prev_end   = curr_start - timedelta(days=1)
-        prev_start = prev_end - timedelta(days=days)
-        period_label = f"{curr_start} / {today}"
-
-        curr_raw  = self.gsc_client.fetch_query_metrics(str(curr_start), str(today))
-        prev_raw  = self.gsc_client.fetch_query_metrics(str(prev_start), str(prev_end))
-        page_raw  = self.gsc_client.fetch_page_metrics(str(curr_start), str(today))
-        daily_raw = self.gsc_client.fetch_daily_metrics(str(curr_start), str(today))
-
-        report_data = SEOAnalyzer.analyze_data(curr_raw, prev_raw, page_raw, daily_raw, period_label)
+    def report_settimanale(self, pagine, query) -> dict:
+        """Dai due export giornalieri al report finito, con invio di email e Telegram."""
+        risultato = analizza_settimana(pagine, query)  # ValueError se manca una settimana completa
 
         try:
-            narrative = self.llm_view.generate_narrative(report_data)
+            llm_html = self.llm_view.generate_weekly_html(risultato)
         except Exception as e:
-            narrative = f"Riepilogo AI non disponibile ({e}). Consultare la tabella dati."
+            print(f"[LLM ERROR] {e}")
+            llm_html = TESTO_NON_DISPONIBILE
 
-        subject      = f"Report SEO ({period_label})"
-        html_content = ReportFormatter.format_html(report_data, narrative)
-        email_sent    = self.email.send(subject, html_content)
-        telegram_sent = self.telegram.send(subject, narrative)
+        html = crea_report(llm_html, risultato)
+        oggetto = f"Report settimanale SEO ({risultato['periodo']})"
 
-        result = ReportFormatter.format_json(report_data, narrative)
-        result["email_sent"]    = email_sent
-        result["telegram_sent"] = telegram_sent
-        return result
+        dati = risultato["dati"]
+        riassunto = (f"{risultato['periodo']}: {dati['clic_totali']} clic "
+                     f"({dati['clic_totali_variazione']} rispetto a {risultato['periodo_precedente']}).")
+
+        return {
+            "periodo": risultato["periodo"],
+            "report_html": html,
+            "email_sent": self.email.send(oggetto, html),
+            "telegram_sent": self.telegram.send(oggetto, riassunto),
+        }
+
+    def report_da_server(self) -> dict | None:
+        """Lavoro dello scheduler: scarica i CSV dal server dei dati, invia il report e lo salva in static/report."""
+        print("[SCHEDULER] Generazione del report automatico in corso...")
+        try:
+            risultato = self.report_settimanale(scarica_csv("pagine.csv"), scarica_csv("query.csv"))
+        except Exception as e:
+            print(f"[SCHEDULER] Report non generato: {e}")
+            return None
+
+        CARTELLA_REPORT.mkdir(parents=True, exist_ok=True)
+        periodo = risultato["periodo"].replace(" ", "_")  # il periodo resta leggibile nel nome del file
+        nome = f"report_{datetime.now():%Y-%m-%d_%H-%M}__{periodo}.html"
+        (CARTELLA_REPORT / nome).write_text(risultato["report_html"], encoding="utf-8")
+        print(f"[SCHEDULER] Report salvato: http://127.0.0.1:8000/static/report/{nome}")
+        print(f"[SCHEDULER] Email inviata: {'sì' if risultato['email_sent'] else 'no'}")
+        return {
+            "periodo": risultato["periodo"],
+            "url": f"/static/report/{nome}",
+            "email_sent": risultato["email_sent"],
+        }

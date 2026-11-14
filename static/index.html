@@ -5,93 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Report SEO</title>
     <style>
-        body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: "Segoe UI", Helvetica, Arial, sans-serif;
-            text-align: center;
-            color: #1e293b;
-            background: #f1f5f9;
-        }
+        body { margin: 0; min-height: 100vh; font-family: "Segoe UI", Helvetica, Arial, sans-serif; text-align: center; color: #1e293b; background: #eef2f6; }
 
-        header {
-            padding: 56px 16px 80px;
-            color: #fff;
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
-        }
+        header { padding: 56px 16px 80px; color: #fff; background: linear-gradient(135deg, #134e4a, #0f766e); border-bottom: 4px solid #fcd34d; }
         header h1 { margin: 0; font-size: 36px; font-weight: 600; letter-spacing: 1px; }
-        header p { margin: 12px 0 0; font-size: 17px; color: #94a3b8; }
+        header p { margin: 12px 0 0; font-size: 17px; color: #b8e3dd; }
 
-        main { max-width: 720px; margin: -40px auto 48px; padding: 0 16px; }
-
-        .card {
-            margin-bottom: 20px;
-            padding: 32px;
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
-        }
+        main { max-width: 1100px; margin: -40px auto 48px; padding: 0 16px; }
+        .card { margin-bottom: 20px; padding: 32px; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08); }
         .card h2 { margin: 0 0 20px; font-size: 18px; font-weight: 600; color: #0f172a; }
-        .step {
-            display: inline-block;
-            width: 28px;
-            height: 28px;
-            margin-right: 8px;
-            line-height: 28px;
-            font-size: 14px;
-            color: #fff;
-            background: #1e3a5f;
-            border-radius: 50%;
-        }
+        .step { display: inline-block; width: 28px; height: 28px; margin-right: 8px; line-height: 28px; font-size: 14px; color: #fff; background: #0f766e; border-radius: 50%; }
+        .nota { margin: 0; font-size: 14px; color: #64748b; }
 
         /* Scelta dei file */
         #csvInput { display: none; }
-        .pick {
-            display: block;
-            padding: 30px 16px;
-            font-size: 16px;
-            color: #475569;
-            background: #f8fafc;
-            border: 2px dashed #cbd5e1;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.25s;
-        }
-        .pick:hover {
-            color: #1e3a5f;
-            border-color: #2563eb;
-            background: #eff6ff;
-            box-shadow: 0 0 16px rgba(37, 99, 235, 0.2);
-        }
-        #fileNames { margin: 14px 0 0; font-size: 14px; color: #1e3a5f; word-break: break-word; }
+        .pick { display: block; padding: 30px 16px; font-size: 16px; color: #475569; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; cursor: pointer; transition: all 0.25s; }
+        .pick:hover { color: #134e4a; border-color: #0f766e; background: #f0fdfa; box-shadow: 0 0 16px rgba(15, 118, 110, 0.25); }
+        #fileNames { margin: 14px 0 0; font-size: 14px; color: #134e4a; word-break: break-word; }
 
         /* Pulsante principale */
-        #btnGenera {
-            width: 100%;
-            padding: 24px;
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            color: #fff;
-            background: linear-gradient(90deg, #1e3a5f, #2563eb);
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.25s;
-        }
-        #btnGenera:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 0 24px rgba(37, 99, 235, 0.55), 0 8px 28px rgba(30, 58, 95, 0.3);
-        }
-        #btnGenera:active:not(:disabled) { transform: translateY(0); }
+        #btnGenera { width: 100%; padding: 24px; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; color: #fff; background: linear-gradient(90deg, #134e4a, #0f766e); border: none; border-radius: 12px; cursor: pointer; transition: all 0.25s; }
+        #btnGenera:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 24px rgba(15, 118, 110, 0.55), 0 8px 28px rgba(19, 78, 74, 0.3); }
         #btnGenera:disabled { background: #94a3b8; cursor: wait; }
-
         #status { margin: 18px 0 0; min-height: 22px; font-size: 15px; color: #475569; }
-        #status.ok  { color: #047857; }
+        #status.ok { color: #0f766e; }
         #status.err { color: #b91c1c; }
 
-        #preview { display: none; width: 100%; height: 720px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+        /* Pulsanti secondari */
+        .azione { padding: 9px 22px; font-size: 14px; font-weight: 600; color: #0f766e; background: #fff; border: 2px solid #0f766e; border-radius: 8px; cursor: pointer; text-decoration: none; transition: all 0.25s; }
+        .azione:hover { color: #fff; background: #0f766e; box-shadow: 0 0 14px rgba(15, 118, 110, 0.45); }
+
+        /* Timer e programmazione */
+        #timer { margin: 0 0 6px; font-size: 44px; font-weight: 700; letter-spacing: 1px; color: #0f766e; font-variant-numeric: tabular-nums; }
+        #timer.attivo { font-size: 28px; color: #b45309; }
+        .programma { margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+        .programma h3 { margin: 0 0 14px; font-size: 15px; font-weight: 600; color: #0f172a; }
+        .campi { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; font-size: 15px; }
+        .campi select, .campi input { padding: 9px 12px; font-size: 15px; font-family: inherit; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; }
+        .campi input[type=number] { width: 80px; }
+        #msgProgramma { min-height: 20px; margin: 12px 0 0; font-size: 14px; color: #0f766e; }
+
+        /* Anteprime */
+        .invio { margin: 0 0 16px; font-size: 15px; font-weight: 600; }
+        .invio.ok { color: #0f766e; }
+        .invio.no { color: #b45309; }
+        iframe { display: none; width: 100%; height: 600px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+        .risultato-testa { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .risultato-testa h2 { margin: 0; }
+
+        /* Elenco dei report automatici */
+        #listaAutomatici { margin: 0; padding: 0; list-style: none; text-align: left; }
+        #listaAutomatici li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 4px; border-bottom: 1px solid #e2e8f0; }
+        #listaAutomatici li:last-child { border-bottom: none; }
+        .report-titolo { font-weight: 600; color: #0f172a; }
+        .report-data { font-size: 13px; color: #64748b; }
+        .report-azioni { display: flex; gap: 8px; flex-shrink: 0; }
+
+        /* Menù a tendina */
+        details summary { cursor: pointer; font-size: 18px; font-weight: 600; color: #0f172a; list-style: none; }
+        details summary::-webkit-details-marker { display: none; }
+        details summary::before { content: "▸"; display: inline-block; width: 22px; color: #0f766e; }
+        details[open] > summary::before { content: "▾"; }
+        details > iframe { margin-top: 16px; }
+        details > ul, details > .nota { margin-top: 16px; }
     </style>
 </head>
 <body>
@@ -115,66 +91,226 @@
             <p id="status"></p>
         </div>
 
-        <div class="card" id="result" style="display:none;">
-            <h2>Il tuo report</h2>
-            <iframe id="preview"></iframe>
+        <div class="card" id="cardManuale" style="display:none;">
+            <div class="risultato-testa">
+                <h2>Il tuo report</h2>
+                <button class="azione" id="btnPdf">Scarica PDF</button>
+            </div>
+            <iframe id="anteprimaManuale"></iframe>
+        </div>
+
+        <div class="card">
+            <h2>Prossimo report automatico</h2>
+            <p id="timer">--:--:--</p>
+            <p class="nota" id="prossimoTesto"></p>
+
+            <div class="programma">
+                <h3>Quando creare il report</h3>
+                <div class="campi">
+                    <select id="frequenza">
+                        <option value="settimana">Ogni settimana</option>
+                        <option value="giorno">Ogni giorno</option>
+                        <option value="minuti">Ogni tot minuti (prova)</option>
+                    </select>
+                    <select id="giorno">
+                        <option value="0">lunedì</option>
+                        <option value="1">martedì</option>
+                        <option value="2">mercoledì</option>
+                        <option value="3">giovedì</option>
+                        <option value="4">venerdì</option>
+                        <option value="5">sabato</option>
+                        <option value="6">domenica</option>
+                    </select>
+                    <span id="campoOra">alle <input type="time" id="ora" value="08:30"></span>
+                    <span id="campoMinuti">ogni <input type="number" id="minuti" min="1" max="1440" value="60"> minuti</span>
+                    <button class="azione" id="btnSalva">Salva</button>
+                </div>
+                <p id="msgProgramma"></p>
+            </div>
+        </div>
+
+        <div class="card" id="cardAutomatico" style="display:none;">
+            <h2>Ultimo report creato</h2>
+            <p class="invio" id="esitoInvio"></p>
+            <details id="dettagliAnteprima">
+                <summary>Anteprima del report</summary>
+                <iframe id="anteprimaAutomatica"></iframe>
+            </details>
+        </div>
+
+        <div class="card">
+            <details>
+                <summary>Report creati automaticamente</summary>
+                <p class="nota" id="notaAutomatici"></p>
+                <ul id="listaAutomatici"></ul>
+            </details>
         </div>
     </main>
 
     <script>
-        const input     = document.getElementById('csvInput');
-        const fileNames = document.getElementById('fileNames');
-        const button    = document.getElementById('btnGenera');
-        const status    = document.getElementById('status');
-        const result    = document.getElementById('result');
-        const preview   = document.getElementById('preview');
+        const $ = id => document.getElementById(id);
 
-        function showStatus(text, type = "") {
-            status.textContent = text;
-            status.className = type;
+        // Le anteprime si allungano quanto il report, così si scorre solo la pagina
+        function adattaAltezza() {
+            for (const frame of [$("anteprimaManuale"), $("anteprimaAutomatica")]) {
+                const altezza = frame.contentDocument.documentElement.scrollHeight;
+                if (altezza > 0) frame.style.height = altezza + "px";  // 0 = menù chiuso, si ricalcola all'apertura
+            }
         }
+        $("anteprimaManuale").onload = adattaAltezza;
+        $("anteprimaAutomatica").onload = adattaAltezza;
+        $("dettagliAnteprima").ontoggle = adattaAltezza;
+        window.onresize = adattaAltezza;
 
-        input.onchange = () => {
-            const names = Array.from(input.files).map(file => file.name);
-            fileNames.textContent = names.length ? "File selezionati: " + names.join(" · ") : "";
+        // ---------- Report manuale ----------
+        $("csvInput").onchange = () => {
+            const nomi = Array.from($("csvInput").files).map(file => file.name);
+            $("fileNames").textContent = nomi.length ? "File selezionati: " + nomi.join(" · ") : "";
         };
 
-        button.onclick = async () => {
-            if (input.files.length === 0) {
-                showStatus("Seleziona prima almeno un file CSV.", "err");
+        function mostraStato(testo, tipo = "") {
+            $("status").textContent = testo;
+            $("status").className = tipo;
+        }
+
+        $("btnGenera").onclick = async () => {
+            const files = $("csvInput").files;
+            if (files.length === 0) {
+                mostraStato("Seleziona prima almeno un file CSV.", "err");
                 return;
             }
 
-            button.disabled = true;
-            showStatus("Sto preparando il report...");
+            $("btnGenera").disabled = true;
+            mostraStato("Sto preparando il report...");
 
             const formData = new FormData();
-            for (const file of input.files) {
-                formData.append("files", file);
-            }
+            for (const file of files) formData.append("files", file);
 
             try {
                 const res  = await fetch("/api/upload-report", { method: "POST", body: formData });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || "Qualcosa è andato storto, riprova.");
 
-                preview.srcdoc = data.report_html;
-                preview.style.display = "block";
-                result.style.display = "block";
-                showStatus(
-                    data.email_sent
-                        ? "Report pronto e inviato via email."
-                        : "Report pronto. L'invio via email non è attivo.",
-                    "ok"
-                );
-                result.scrollIntoView({ behavior: "smooth" });
+                $("anteprimaManuale").srcdoc = data.report_html;
+                $("anteprimaManuale").style.display = "block";
+                $("cardManuale").style.display = "block";
+                mostraStato(data.email_sent ? "Report pronto e inviato via email." : "Report pronto. L'invio via email non è attivo.", "ok");
+                $("cardManuale").scrollIntoView({ behavior: "smooth" });
             } catch (err) {
-                const isNetworkError = err instanceof TypeError;
-                showStatus(isNetworkError ? "Server non raggiungibile, riprova." : err.message, "err");
+                mostraStato(err instanceof TypeError ? "Server non raggiungibile, riprova." : err.message, "err");
             } finally {
-                button.disabled = false;
+                $("btnGenera").disabled = false;
             }
         };
+
+        // Apre la stampa del browser: scegliendo "Salva come PDF" si scarica il report
+        $("btnPdf").onclick = () => {
+            $("anteprimaManuale").contentWindow.focus();
+            $("anteprimaManuale").contentWindow.print();
+        };
+
+        // ---------- Elenco dei report automatici ----------
+        async function caricaElenco() {
+            const lista = await (await fetch("/api/report-automatici")).json();
+            $("notaAutomatici").textContent = lista.length ? "" : "Nessun report automatico ancora creato.";
+            $("listaAutomatici").innerHTML = lista.map(r => `
+                <li>
+                    <div>
+                        <div class="report-titolo">${r.periodo}</div>
+                        <div class="report-data">Creato il ${r.creato}</div>
+                    </div>
+                    <div class="report-azioni">
+                        <a class="azione" href="${r.url}" target="_blank">Apri</a>
+                        <a class="azione" href="${r.url}" download="${r.nome}">Scarica</a>
+                    </div>
+                </li>`).join("");
+        }
+
+        // ---------- Timer e programmazione ----------
+        let secondiMancanti = null;
+        let inCorso = false;
+        let ultimoMostrato = "";
+        let primaVolta = true;
+
+        function mostraCampi() {
+            const f = $("frequenza").value;
+            $("giorno").style.display      = f === "settimana" ? "" : "none";
+            $("campoOra").style.display    = f === "minuti" ? "none" : "";
+            $("campoMinuti").style.display = f === "minuti" ? "" : "none";
+        }
+        $("frequenza").onchange = mostraCampi;
+
+        function formattaTempo(s) {
+            const giorni = Math.floor(s / 86400);
+            const hms = [Math.floor(s % 86400 / 3600), Math.floor(s % 3600 / 60), s % 60]
+                .map(n => String(n).padStart(2, "0")).join(":");
+            return giorni ? `${giorni} g ${hms}` : hms;
+        }
+
+        function mostraTimer() {
+            if (secondiMancanti === null) return;
+            const inCreazione = inCorso || secondiMancanti === 0;
+            $("timer").textContent = inCreazione ? "Creazione del report in corso..." : formattaTempo(secondiMancanti);
+            $("timer").className = inCreazione ? "attivo" : "";
+        }
+
+        // Dopo ogni report automatico mostra l'anteprima e se è stato inviato via email
+        function mostraUltimoReport(esito) {
+            if (!esito || esito.url === ultimoMostrato) return;
+            ultimoMostrato = esito.url;
+            $("cardAutomatico").style.display = "block";
+            $("esitoInvio").textContent = esito.email_sent
+                ? `Report ${esito.periodo}: inviato via email.`
+                : `Report ${esito.periodo}: non inviato via email (invio non configurato).`;
+            $("esitoInvio").className = "invio " + (esito.email_sent ? "ok" : "no");
+            $("anteprimaAutomatica").style.display = "block";
+            $("anteprimaAutomatica").src = esito.url;
+        }
+
+        async function aggiornaStato() {
+            const d = await (await fetch("/api/scheduler")).json();
+            if (inCorso && !d.in_corso) caricaElenco();  // report appena finito: aggiorna l'elenco
+            inCorso = d.in_corso;
+            secondiMancanti = d.secondi_mancanti;
+            $("prossimoTesto").textContent = "Prossimo report: " + d.prossimo_testo;
+            mostraUltimoReport(d.ultimo_esito);
+
+            if (primaVolta) {  // riempie il modulo solo all'apertura della pagina
+                primaVolta = false;
+                $("frequenza").value = d.programma.frequenza;
+                $("giorno").value = d.programma.giorno;
+                $("ora").value = d.programma.ora;
+                $("minuti").value = d.programma.minuti;
+                mostraCampi();
+            }
+            mostraTimer();
+        }
+
+        $("btnSalva").onclick = async () => {
+            const res = await fetch("/api/scheduler", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    frequenza: $("frequenza").value,
+                    giorno: parseInt($("giorno").value),
+                    ora: $("ora").value || "08:30",
+                    minuti: parseInt($("minuti").value) || 60,
+                }),
+            });
+            $("msgProgramma").textContent = res.ok ? "Programmazione salvata." : "Controlla i valori inseriti.";
+            if (res.ok) aggiornaStato();
+        };
+
+        // Ogni secondo il timer scende; ogni 15 secondi si riallinea con il server
+        setInterval(() => {
+            if (secondiMancanti > 0) secondiMancanti--;
+            else if (secondiMancanti === 0) aggiornaStato();  // scaduto: aspetta che il report sia finito
+            mostraTimer();
+        }, 1000);
+        setInterval(aggiornaStato, 15000);
+
+        aggiornaStato();
+        caricaElenco();
     </script>
 </body>
 </html>

@@ -5,12 +5,12 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from controllers.api_routes import router as api_router
-from controllers.scheduler import ReportScheduler
+from controllers.scheduler import scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ReportScheduler().start()
+    scheduler.start()
     yield
 
 
