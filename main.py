@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 load_dotenv(override=True)
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -14,7 +15,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="SEO Reporting MVC", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="SEO Reporting MVC", lifespan=lifespan)
 app.include_router(api_router, prefix="/api")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
