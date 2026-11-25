@@ -62,8 +62,9 @@ def differenza(ora, prima):
 
 
 def nome_periodo(inizio, fine):
-    return f"{inizio.day}-{fine.day} {MESI[fine.month - 1]} {fine.year}"
-
+    if inizio.month == fine.month:
+        return f"{inizio.day}-{fine.day} {MESI[fine.month - 1]} {fine.year}"
+    return f"{inizio.day} {MESI[inizio.month - 1]} - {fine.day} {MESI[fine.month - 1]} {fine.year}"  # a cavallo di due mesi
 
 def senza_dominio(indice):
     """https://www.sito.it/pagina.php -> /pagina.php"""

@@ -9,7 +9,7 @@ class EmailNotifier:
 
     def __init__(self):
         self.host      = os.getenv("SMTP_HOST", "")
-        self.port      = int(os.getenv("SMTP_PORT", "587"))
+        self.port      = int(os.getenv("SMTP_PORT") or 587)
         self.user      = os.getenv("SMTP_USER", "")
         self.password  = os.getenv("SMTP_PASSWORD", "")
         self.recipient = os.getenv("CLIENT_EMAIL", "")
