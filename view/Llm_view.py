@@ -19,7 +19,7 @@ class LLMReportView:
 
     def _ask_llm(self, prompt: str) -> str:
         """Invia il prompt al modello e restituisce il testo della risposta."""
-        for _ in range(3):  # con troppe richieste il servizio risponde 503: si riprova
+        for _ in range(5):  # con troppe richieste il servizio risponde 503: si riprova
             response = requests.post(
                 self.api_url,
                 headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
@@ -28,7 +28,7 @@ class LLMReportView:
             )
             if response.status_code not in (429, 500, 503):
                 break
-            time.sleep(5)
+            time.sleep(10)
 
         if not response.ok:
             print(f"[LLM] Errore {response.status_code}: {response.text}")
